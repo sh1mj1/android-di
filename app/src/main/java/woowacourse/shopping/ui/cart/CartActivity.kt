@@ -4,7 +4,13 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.Lifecycle.Event.*
+import androidx.lifecycle.LifecycleEventObserver
+import woowacourse.di.ActivityScopedObserver
+import woowacourse.di.InjectedComponent
 import woowacourse.shopping.R
+import woowacourse.shopping.ShoppingApplication
 import woowacourse.shopping.databinding.ActivityCartBinding
 
 class CartActivity : AppCompatActivity() {
@@ -14,10 +20,49 @@ class CartActivity : AppCompatActivity() {
         CartViewModel.Factory
     }
 
-    private lateinit var dateFormatter: DateFormatter
+    private lateinit var dateFormatter: IDateFormatter
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val application = application as ShoppingApplication
+        val injectedContainer = application.container.injectedComponentContainer
+
+//        lifecycle.addObserver(ActivityScopedObserver(injectedContainer, this, CartActivity::class))
+
+        val observer = LifecycleEventObserver { owner, event ->
+            when (event) {
+                ON_CREATE -> {
+                    if (injectedContainer.find(IDateFormatter::class) == null) {
+                        injectedContainer.add(
+                            InjectedComponent.InjectedActivityComponent(
+                                IDateFormatter::class,
+                                DateFormatter(this),
+                                CartActivity::class
+                            )
+                        )
+                    }
+                }
+
+                ON_DESTROY -> {
+                    injectedContainer.clearActivityScopedObjects()
+                }
+
+                ON_START -> super.onStart()
+                ON_RESUME -> super.onResume()
+                ON_PAUSE -> super.onPause()
+                ON_STOP -> super.onStop()
+                ON_ANY -> {}
+            }
+        }
+        lifecycle.addObserver(observer)
+
+        
+        dateFormatter = injectedContainer.find(IDateFormatter::class) as IDateFormatter
+
+
 
         setupDateFormatter()
         setupBinding()
@@ -31,7 +76,8 @@ class CartActivity : AppCompatActivity() {
     }
 
     private fun setupDateFormatter() {
-        dateFormatter = DateFormatter(this)
+
+
     }
 
     private fun setupToolbar() {
@@ -70,3 +116,5 @@ class CartActivity : AppCompatActivity() {
         }
     }
 }
+
+private const val TAG = "CartActivity"
